@@ -2,6 +2,7 @@ import os
 from PIL import Image
 import torch
 from torch.utils.data import Dataset
+from torchvision import transforms
 
 # pyTorch Dataset for the KITTI autonomous driving data
 # Will recursively search img_dir and depth_dir to build up the dataset and apply specified transformations
@@ -70,26 +71,32 @@ class KITTIDataset(Dataset):
         tensor_conv = transforms.ToTensor()
         left_image = tensor_conv(left_image)
         right_image = tensor_conv(right_image)
+        depth_image = tensor_conv(depth_image).to(torch.float32).squeeze(0)
 
-        # Depths are stored as integers, so convert to float. Normalize the data as a second step.
-        depth_image = torch.div(tensor_conv(depth_image).to(dtype=torch.float32), 256.0 * 5.1336)
+        # Create a Boolean mask of locations where depth information is provided
+        valid_mask = depth_image > 0
+
+        # Normalize the depth image
+        depth_image = torch.div(torch.subtract(depth_image, 4582.0), 3186) # Subtract mean and divide by std
 
         # Stack the data into a single tensor so we apply the same random augmentations to everything
-        full_data = torch.vstack((left_image, right_image, depth_image))
+        full_data = torch.vstack((left_image, right_image, depth_image.unsqueeze(0),
+                                  valid_mask.to(dtype=torch.uint8).unsqueeze(0)))
 
         # Apply the data augmentations
         if self.transform:
             full_data = self.transform(full_data)
 
         # Split the data back into our source data and ground truth
-        source_data = full_data[0:full_data.shape[0]-1]
-        ground_truth = full_data[-1:].squeeze(0)
+        source_data = full_data[0:full_data.shape[0]-2]
+        ground_truth = full_data[-2:-1].squeeze(0)
+        valid_mask = full_data[-1:].squeeze(0).to(dtype=torch.bool)
 
         # Apply additional augmentations only to the source data (things we don't want to affect ground truth)
         if self.source_additional_transform:
             source_data = self.source_additional_transform(source_data)
 
-        return source_data, ground_truth
+        return source_data, ground_truth, valid_mask
 
 
 
