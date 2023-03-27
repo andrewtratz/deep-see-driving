@@ -9,36 +9,46 @@ from torchvision import transforms
 class KITTIDataset(Dataset):
 
     # Initialization with directories and transforms specified
-    def __init__(self, img_dir, depth_dir, transform=None, source_additional_transform=None):
-        self.depth_dir = depth_dir
-        self.img_dir = img_dir
+    def __init__(self, img_root_dir, depth_root_dir, img_dirs, transform=None, source_additional_transform=None):
+        self.img_root_dir = img_root_dir
+        self.depth_root_dir = depth_root_dir
+        self.img_dirs = img_dirs
         self.transform = transform
         self.source_additional_transform = source_additional_transform
 
         # Populate the list of file paths and depth paths
         self.file_paths = []
-        walk = os.walk(img_dir)
-        for entry in walk:
-            dir, subdir, files = entry
-            if 'image_02' in dir:
-                for file in files:
-                    if file[-4:] == '.png':
-                        # First several frames of each video have no ground truth data, skip them
-                        if file.split('.')[0] in ['0000000000', '0000000001', '0000000002', '0000000003', '0000000004']:
-                            continue
-                        self.file_paths.append(dir + '\\' + file)
+        self.depth_paths = []
+
+        for img_dir in img_dirs:
+            walk = os.walk(os.path.join(self.img_root_dir, img_dir + '_2'))
+            for entry in walk:
+                dir, subdir, files = entry
+                if 'image_02' in dir:
+                    for file in files:
+                        if file[-4:] == '.png':
+                            # First several frames of each video have no ground truth data, skip them
+                            if file.split('.')[0] in ['0000000000', '0000000001', '0000000002', '0000000003', '0000000004']:
+                                continue
+                            self.file_paths.append(dir + '\\' + file)
 
         # Populate the list of depth paths (ground truth labels)
-        self.depth_paths = []
-        walk = os.walk(depth_dir)
-        for entry in walk:
-            dir, subdir, files = entry
-            if 'image_02' in dir:
-                for file in files:
-                    if file[-4:] == '.png':
-                        self.depth_paths.append(dir + '\\' + file)
-                        # Check and make sure all of the data is synchronized
-                        assert(self.depth_paths[-1].split('\\')[-1] == self.file_paths[len(self.depth_paths)-1].split('\\')[-1])
+
+            walk = os.walk(os.path.join(self.depth_root_dir, img_dir))
+            for entry in walk:
+                dir, subdir, files = entry
+                if 'image_02' in dir:
+                    for file in files:
+                        if file[-4:] == '.png':
+                            self.depth_paths.append(dir + '\\' + file)
+                            # Get rid of file paths which don't exist in the depth ground truth
+                            # assert(self.depth_paths[-1].split('\\')[-1] == self.file_paths[len(self.depth_paths)-1].split('\\')[-1])
+                            while self.depth_paths[-1].split('\\')[-1] != self.file_paths[len(self.depth_paths)-1].split('\\')[-1]:
+                                print('Discarding ' + self.file_paths[len(self.depth_paths)-1])
+                                self.file_paths.remove(self.file_paths[len(self.depth_paths)-1])
+
+            # Truncate file paths, since some of the final depths may not exist
+            self.file_paths = self.file_paths[0:len(self.depth_paths)]
 
 
     # Return the total length of the Dataset
