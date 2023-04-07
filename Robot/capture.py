@@ -9,7 +9,7 @@ import numpy as np
 epoch = datetime.utcfromtimestamp(0)
 
 def unix_time_millis(dt):
-    return round((dt - epoch).total_seconds() * 1000.0,0)
+    return int(round((dt - epoch).total_seconds() * 1000.0,0))
 
 # Camera settings
 cam_width = 1280  # Cam sensor width settings
