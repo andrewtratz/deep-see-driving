@@ -38,7 +38,7 @@ if (os.path.isdir("../photos") == False):
     os.makedirs("../photos")
 for frame in camera.capture_continuous(capture, format="rgb", use_video_port=True, resize=(img_width, img_height)):
     counter += 1
-    filename = './photos/photo_' + str(img_width) + 'x' + str(img_height) + '_' + \
+    filename = '../photos/photo_' + str(img_width) + 'x' + str(img_height) + '_' + \
                str(counter) + '.jpg'
     cv2.imwrite(filename, frame)
     time.sleep(0.05)
