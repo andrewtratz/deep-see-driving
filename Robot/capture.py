@@ -34,11 +34,11 @@ camera.framerate = 20
 t2 = datetime.now()
 print("Starting photo sequence")
 counter = 0
-if (os.path.isdir("./photos") == False):
-    os.makedirs("./photos")
-for frame in camera.capture_continuous(capture, format="rgba", use_video_port=True, resize=(img_width, img_height)):
+if (os.path.isdir("../photos") == False):
+    os.makedirs("../photos")
+for frame in camera.capture_continuous(capture, format="rgb", use_video_port=True, resize=(img_width, img_height)):
     counter += 1
     filename = './photos/photo_' + str(img_width) + 'x' + str(img_height) + '_' + \
-               str(counter) + '.png'
+               str(counter) + '.jpg'
     cv2.imwrite(filename, frame)
     time.sleep(0.05)
