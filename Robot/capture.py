@@ -6,6 +6,11 @@ from picamera import PiCamera
 import cv2
 import numpy as np
 
+epoch = datetime.utcfromtimestamp(0)
+
+def unix_time_millis(dt):
+    return (dt - epoch).total_seconds() * 1000.0
+
 # Camera settings
 cam_width = 1280  # Cam sensor width settings
 cam_height = 480  # Cam sensor height settings
@@ -39,6 +44,6 @@ if (os.path.isdir("../photos") == False):
 for frame in camera.capture_continuous(capture, format="rgba", use_video_port=True, resize=(img_width, img_height)):
     counter += 1
     filename = '../photos/photo_' + str(img_width) + 'x' + str(img_height) + '_' + \
-               str(counter) + '.jpg'
+               unix_time_millis(datetime.now()) + '.jpg'
     cv2.imwrite(filename, frame)
     time.sleep(0.05)
