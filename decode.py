@@ -24,7 +24,7 @@ pcap_file = r'velo2.pcap'
 config = vd.Config(model=model_type, rpm=rpm, calibration_file=calibration_file)
 pcap_file = pcap_file
 cloud_arrays = []
-x = vd.read_pcap(pcap_file, config)
+
 for stamp, points in vd.read_pcap(pcap_file, config):
     cloud_arrays.append(points)
     break # Only get first set of data points
@@ -41,13 +41,13 @@ def filter_fov(points, fov_horiz):
 # Filter all points behind the view
 data = data[data[:,0] >= 0.0]
 
-# Filter out FOV
-data = filter_fov(data, 160)
+# Filter out FOV [HAS A BUG!]
+data = filter_fov(data, 90)
 
 # Reorder and reorient axes
 newdata = np.hstack([np.expand_dims(dim, 1) for dim in (-data[:,2], -data[:,1], data[:,0], data[:,6])])
 
-fl = 0.90 # Focal length
+fl = 0.75 # Focal length
 od = 1280 # Output image dimensions
 
 # Camera matrix
