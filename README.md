@@ -20,3 +20,5 @@ Documentation for setup procedure – in case we need to restart
 * sudo apt install wireshark
 * sudo apt install git
 * git clone https://github.com/andrewtratz/deep-see-driving
+* sudo apt-get install tcpdump
+* pip install --pre scapy[basic]
