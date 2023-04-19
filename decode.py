@@ -159,6 +159,7 @@ for i in range(projected.shape[0]):
 
 # Display the test image
 cv2.imshow("Test", img)
+cv2.imwrite('output.jpg', img)
 cv2.waitKey(0)
 
 
