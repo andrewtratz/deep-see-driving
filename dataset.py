@@ -1,6 +1,7 @@
 import os
 from PIL import Image
 import torch
+import numpy as np
 from torch.utils.data import Dataset
 from torchvision import transforms
 
@@ -26,37 +27,52 @@ class DeepSeeDataset(Dataset):
         for entry in walk:
             dir, subdir, files = entry
             for file in files:
-                if file[-4:] == '.jpg':
+                if file[-9:] == '_left.jpg':
                     # Extract timestamp from filename
-                    ts = file[-17:-4]
-
-                    # First several frames of each video have no ground truth data, skip them
-                    if file.split('.')[0] in ['0000000000', '0000000001', '0000000002', '0000000003', '0000000004']:
-                        continue
-                    self.file_paths.append(dir + '\\' + file)
+                    ts = int(file[-22:-9])
+                    self.file_paths[ts] = os.path.join(dir, file)
 
         # Populate the list of depth paths (ground truth labels)
+        walk = os.walk(self.depth_root_dir)
+        for entry in walk:
+            dir, subdir, files = entry
+            for file in files:
+                if file[-4:] == '.npz':
+                    # Extract timestamp from filename
+                    ts = int(file[-17:-4])
+                    self.depth_paths[ts] = os.path.join(dir, file)
 
-            walk = os.walk(os.path.join(self.depth_root_dir, img_dir))
-            for entry in walk:
-                dir, subdir, files = entry
-                if 'image_02' in dir:
-                    for file in files:
-                        if file[-4:] == '.png':
-                            self.depth_paths.append(dir + '\\' + file)
-                            # Get rid of file paths which don't exist in the depth ground truth
-                            # assert(self.depth_paths[-1].split('\\')[-1] == self.file_paths[len(self.depth_paths)-1].split('\\')[-1])
-                            while self.depth_paths[-1].split('\\')[-1] != self.file_paths[len(self.depth_paths)-1].split('\\')[-1]:
-                                print('Discarding ' + self.file_paths[len(self.depth_paths)-1])
-                                self.file_paths.remove(self.file_paths[len(self.depth_paths)-1])
+        # Map corresponding timestamps
+        ts_images = np.sort(np.asarray(list(self.file_paths.keys())))
+        ts_depths = np.sort(np.asarray(list(self.depth_paths.keys())))
+        ts_depth_min = ts_depths[0]
+        ts_depth_max = ts_depths[-1]
+        ts_image_min = ts_images[0]
+        ts_image_max = ts_images[-1]
 
-            # Truncate file paths, since some of the final depths may not exist
-            self.file_paths = self.file_paths[0:len(self.depth_paths)]
+        # Ignore data outside of other sensor's time range
+        ts_images = ts_images[np.logical_and(ts_images > ts_depth_min, ts_images < ts_depth_max)]
+        ts_depths = ts_depths[np.logical_and(ts_depths > ts_image_min, ts_depths < ts_image_max)]
 
+        # Sync the timesteps
+        last_found = 0
+        for ts_i in ts_images:
+            best_delta = 201 # Only accept matches within 200 milliseconds of each other
+            best_match = None
+            for i, ts_d in zip(range(len(ts_depths[last_found:])), ts_depths[last_found:]):
+                delta = abs(ts_i - ts_d)
+                if delta < best_delta:
+                    best_delta = delta
+                    best_match = ts_d
+                elif ts_d > ts_i and delta > best_delta: # Short-circuit if we've passed our mark
+                    if best_match is not None:
+                        last_found = max(0, i - 2)  # Update last_found so we can short circuit the beginning search
+                        self.data_map[self.file_paths[ts_i]] = self.depth_paths[best_match] # Create 1:1 file correspondence
+                    break
 
     # Return the total length of the Dataset
     def __len__(self):
-        return len(self.file_paths)
+        return len(self.data_map)
 
     # Retrieve a single item (defined as img*2 and depth label) from the Dataset
     def __getitem__(self, idx):
@@ -110,6 +126,8 @@ class DeepSeeDataset(Dataset):
             source_data = self.source_additional_transform(source_data)
 
         return source_data, ground_truth, valid_mask
+
+d = DeepSeeDataset(r'D:\DeepSeeData\Processed', r'D:\DeepSeeData\Processed')
 
 
 # pyTorch Dataset for the KITTI autonomous driving data
