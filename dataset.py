@@ -23,6 +23,8 @@ class DeepSeeDataset(Dataset):
         self.depth_paths = {}
         self.data_map = {} # Map valid image files to valid depth maps
 
+        self.valid_paths = []
+
         walk = os.walk(self.img_root_dir)
         for entry in walk:
             dir, subdir, files = entry
@@ -68,49 +70,44 @@ class DeepSeeDataset(Dataset):
                     if best_match is not None:
                         last_found = max(0, i - 2)  # Update last_found so we can short circuit the beginning search
                         self.data_map[self.file_paths[ts_i]] = self.depth_paths[best_match] # Create 1:1 file correspondence
+                        self.valid_paths.append(self.file_paths[ts_i])
                     break
 
     # Return the total length of the Dataset
     def __len__(self):
-        return len(self.data_map)
+        return len(self.valid_paths)
 
     # Retrieve a single item (defined as img*2 and depth label) from the Dataset
     def __getitem__(self, idx):
 
         # Treat the original path as left, get revised path for right image
-        left_image_path = self.file_paths[idx]
-        right_image_path = left_image_path.replace('image_02', 'image_03')
-        depth_path = self.depth_paths[idx]
+        left_image_path = self.valid_paths[idx]
+        right_image_path = left_image_path.replace('_left', '_right')
+        depth_path = self.data_map[left_image_path]
 
-        # Apply a crop to the data since the LiDAR scans don't provide info for the top third of the image
-        crop_pattern = (0, 120, 1242, 375)
-        left_image = Image.open(left_image_path).crop(crop_pattern)
-        right_image = Image.open(right_image_path).crop(crop_pattern)
-        depth_image = Image.open(depth_path).crop(crop_pattern)
-
-        # Debugging code to show comparative frames
-        # dst = Image.new('RGB', (left_image.width, left_image.height + left_image.height))
-        # dst.paste(left_image, (0, 0))
-        # dst.paste(depth_image, (0, left_image.height))
-        # dst.show()
+        # Load the images
+        left_image = Image.open(left_image_path)
+        right_image = Image.open(right_image_path)
+        with np.load(depth_path) as npz_file:
+            depth_image = npz_file['arr_0']
 
         # Apply transform augmentations to the data
 
         # Convert images into pyTorch tensor data format, which will be used for analysis
         tensor_conv = transforms.ToTensor()
-        left_image = tensor_conv(left_image)
-        right_image = tensor_conv(right_image)
-        depth_image = tensor_conv(depth_image).to(torch.float32).squeeze(0)
+        left_image = tensor_conv(left_image).to(torch.float32)
+        right_image = tensor_conv(right_image).to(torch.float32)
+        depth_image = tensor_conv(depth_image).squeeze(0)
 
         # Create a Boolean mask of locations where depth information is provided
         valid_mask = depth_image > 0
 
         # Normalize the depth image
-        depth_image = torch.div(torch.subtract(depth_image, 4582.0), 3186) # Subtract mean and divide by std
+        depth_image = torch.div(torch.subtract(depth_image, 0.0), 1.0).to(torch.float32) # Subtract mean and divide by std
 
         # Stack the data into a single tensor so we apply the same random augmentations to everything
         full_data = torch.vstack((left_image, right_image, depth_image.unsqueeze(0),
-                                  valid_mask.to(dtype=torch.uint8).unsqueeze(0)))
+                                  valid_mask.to(dtype=torch.float32).unsqueeze(0)))
 
         # Apply the data augmentations
         if self.transform:
@@ -126,8 +123,6 @@ class DeepSeeDataset(Dataset):
             source_data = self.source_additional_transform(source_data)
 
         return source_data, ground_truth, valid_mask
-
-d = DeepSeeDataset(r'D:\DeepSeeData\Processed', r'D:\DeepSeeData\Processed')
 
 
 # pyTorch Dataset for the KITTI autonomous driving data

@@ -3,4 +3,6 @@ venv
 *runs*
 *.pth
 *models*
+*model*
+*optimizer*
 __pycache__

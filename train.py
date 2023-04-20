@@ -7,7 +7,7 @@ from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from backbones import ResNetLike
 
-from dataset import KITTIDataset
+from dataset import KITTIDataset, DeepSeeDataset
 
 if torch.cuda.is_available():
     device = torch.device("cuda")
@@ -16,6 +16,9 @@ else:
     device = torch.device("cpu")
     print("Running on CPU")
 
+# Can train on KITTI data or DeepSee data
+train_type = 'DeepSee'
+# train_type = 'KITTI'
 
 # A list of transformations to apply to both the source data and ground truth
 basic_trans = transforms.Compose([
@@ -29,24 +32,29 @@ source_trans = transforms.Compose([
                                                 transforms.ColorJitter()]))
 ])
 
-# List of train and validation data (this split is provided by the KITTI dataset creators)
-train_folders = os.listdir(r'C:\Users\andre\Dropbox\~DGMD E-17\Project\Datasets\KITTI\data_depth_annotated\train')
-val_folders = os.listdir(r'C:\Users\andre\Dropbox\~DGMD E-17\Project\Datasets\KITTI\data_depth_annotated\val')
+if train_type == 'KITTI':
+    # List of train and validation data (this split is provided by the KITTI dataset creators)
+    train_folders = os.listdir(r'C:\Users\andre\Dropbox\~DGMD E-17\Project\Datasets\KITTI\data_depth_annotated\train')
+    val_folders = os.listdir(r'C:\Users\andre\Dropbox\~DGMD E-17\Project\Datasets\KITTI\data_depth_annotated\val')
+    # Load the KITTI dataset
+    data = KITTIDataset(r'D:\KITTI',
+                        r'C:\Users\andre\Dropbox\~DGMD E-17\Project\Datasets\KITTI\data_depth_annotated\train',
+                        train_folders,
+                        basic_trans, source_trans)
 
-# Debug code
-# train_folders = [train_folders[0]]
-# val_folders = [val_folders[0]]
-
-# Load the KITTI dataset
-kitti = KITTIDataset(r'D:\KITTI', r'C:\Users\andre\Dropbox\~DGMD E-17\Project\Datasets\KITTI\data_depth_annotated\train', train_folders,
-                     basic_trans, source_trans)
-
-kitti_cv = KITTIDataset(r'D:\KITTI', r'C:\Users\andre\Dropbox\~DGMD E-17\Project\Datasets\KITTI\data_depth_annotated\val', val_folders,
-                     basic_trans, source_trans)
+    data_cv = KITTIDataset(r'D:\KITTI',
+                           r'C:\Users\andre\Dropbox\~DGMD E-17\Project\Datasets\KITTI\data_depth_annotated\val',
+                           val_folders,
+                           basic_trans, source_trans)
+if train_type == 'DeepSee':
+    train_folder = r'D:\DeepSeeData\Processed'
+    val_folder = r'D:\DeepSeeData\Processed'
+    data = DeepSeeDataset(train_folder, train_folder, basic_trans, source_trans)
+    data_cv = DeepSeeDataset(val_folder, val_folder, basic_trans, source_trans)
 
 # DataLoader objects for the two datasets
-train_loader = DataLoader(kitti, batch_size=BATCH_SIZE, shuffle=True)
-cv_loader = DataLoader(kitti_cv, batch_size=BATCH_SIZE, shuffle=False)
+train_loader = DataLoader(data, batch_size=BATCH_SIZE, shuffle=True)
+cv_loader = DataLoader(data_cv, batch_size=BATCH_SIZE, shuffle=False)
 
 # Create a TensorBoard logging writer
 writer = SummaryWriter()
