@@ -4,6 +4,7 @@ import torch
 import numpy as np
 from torch.utils.data import Dataset
 from torchvision import transforms
+import random
 
 
 
@@ -12,11 +13,12 @@ from torchvision import transforms
 class DeepSeeDataset(Dataset):
 
     # Initialization with directories and transforms specified
-    def __init__(self, img_root_dir, depth_root_dir, transform=None, source_additional_transform=None):
+    def __init__(self, img_root_dir, depth_root_dir, transform=None, source_additional_transform=None, random_flip=True):
         self.img_root_dir = img_root_dir
         self.depth_root_dir = depth_root_dir
         self.transform = transform
         self.source_additional_transform = source_additional_transform
+        self.random_flip = random_flip
 
         # Populate directory of file paths and depth paths, indexed by timestamp
         self.file_paths = {}
@@ -80,6 +82,12 @@ class DeepSeeDataset(Dataset):
     # Retrieve a single item (defined as img*2 and depth label) from the Dataset
     def __getitem__(self, idx):
 
+        # Will we flip?
+        if self.random_flip:
+            self.flip = random.choice(('none', 'vertical', 'horizontal'))
+        else:
+            self.flip = 'none'
+
         # Treat the original path as left, get revised path for right image
         left_image_path = self.valid_paths[idx]
         right_image_path = left_image_path.replace('_left', '_right')
@@ -99,6 +107,12 @@ class DeepSeeDataset(Dataset):
         right_image = tensor_conv(right_image).to(torch.float32)
         depth_image = tensor_conv(depth_image).squeeze(0)
 
+        # If we're flipping, pretend we're also swapping eyes
+        if self.flip != 'none':
+            temp = left_image
+            left_image = right_image.copy()
+            right_image = temp
+
         # Create a Boolean mask of locations where depth information is provided
         valid_mask = depth_image > 0
 
@@ -112,6 +126,14 @@ class DeepSeeDataset(Dataset):
         # Apply the data augmentations
         if self.transform:
             full_data = self.transform(full_data)
+
+        # Apply flipping transform
+        if self.flip != 'none':
+            if self.flip == 'vertical':
+                flip = transforms.RandomVerticalFlip(1.0)
+            else:
+                flip = transforms.RandomHorizontalFlip(1.0)
+            full_data = flip(full_data)
 
         # Split the data back into our source data and ground truth
         source_data = full_data[0:full_data.shape[0]-2]

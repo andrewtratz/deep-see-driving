@@ -23,7 +23,6 @@ train_type = 'DeepSee'
 # A list of transformations to apply to both the source data and ground truth
 basic_trans = transforms.Compose([
     transforms.RandomCrop(CROP_SIZE),
-    transforms.RandomVerticalFlip(0.5),
 ])
 
 # A list of transformations to apply ONLY to the source data
