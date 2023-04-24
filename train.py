@@ -17,8 +17,8 @@ else:
     print("Running on CPU")
 
 # Can train on KITTI data or DeepSee data
-train_type = 'DeepSee'
-# train_type = 'KITTI'
+#train_type = 'DeepSee'
+train_type = 'KITTI'
 
 # A list of transformations to apply to both the source data and ground truth
 basic_trans = transforms.Compose([
@@ -59,7 +59,6 @@ cv_loader = DataLoader(data_cv, batch_size=BATCH_SIZE, shuffle=False)
 writer = SummaryWriter()
 
 # Instantiate our model and optimizer
-epochs = 20
 model = ResNetLike().to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr=1e-2)
 
@@ -72,7 +71,7 @@ def compute_loss(output, truth, valid_mask):
 
 # Run a big loop multiple times throughout the entire dataset
 iter = 0
-for epoch in range(epochs):
+for epoch in range(EPOCHS):
 
     # Training loop
     for i, (source, truth, valid_mask) in enumerate(train_loader):
