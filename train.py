@@ -9,6 +9,14 @@ from backbones import ResNetLike
 
 from dataset import KITTIDataset, DeepSeeDataset
 
+##################################
+#
+# train.py
+#
+# Stereo vision model training routine
+#
+##################################
+
 if torch.cuda.is_available():
     device = torch.device("cuda")
     print("Running on GPU")

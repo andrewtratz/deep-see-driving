@@ -5,7 +5,13 @@ import math
 import cv2
 from calibration_settings import *
 
-# Load camera image
+#############
+#
+# Helper script to perform manual calibration of the sensors given camera and LiDAR data inputs
+#
+#############
+
+# Load camera image and make corrections
 source = cv2.imread("./calibration_inputs/cups_photo.jpg")
 source = cv2.rotate(source, cv2.ROTATE_90_CLOCKWISE)
 source = cv2.rotate(source, cv2.ROTATE_90_CLOCKWISE)

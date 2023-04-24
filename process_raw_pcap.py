@@ -4,6 +4,8 @@ import velodyne_decoder as vd
 import numpy as np
 from calibration_settings import *
 
+# LiDAR data preprocessing script
+
 data_dir = r'D:\DeepSeeData\Raw'
 output_dir = r'D:\DeepSeeData\Processed'
 

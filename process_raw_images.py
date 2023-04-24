@@ -2,6 +2,8 @@ import os
 import cv2
 from tqdm import tqdm
 
+# Camera image preprocessing script
+
 data_dir = r'D:\DeepSeeData\Raw'
 output_dir = r'D:\DeepSeeData\Processed'
 
@@ -16,13 +18,14 @@ for entry in tqdm(walk):
 
             subdirectory_path = dir[len(data_dir):]
 
+            # Fix timestamp offset
             timestamp_str = file[-17:-4]
             corrected_timestamp = str(int(float(timestamp_str) + 4 * 60 * 60 * 1000))
 
             if not os.path.exists(output_dir + subdirectory_path[:-1]):
                 os.makedirs(output_dir + subdirectory_path[:-1])
 
-            # print(os.path.join(dir, file))
+            # Make corrections to the image
             img = cv2.imread(os.path.join(dir, file))
             img = cv2.rotate(img, cv2.ROTATE_90_CLOCKWISE)
             img = cv2.rotate(img, cv2.ROTATE_90_CLOCKWISE)
@@ -31,6 +34,7 @@ for entry in tqdm(walk):
             left = img[:, :width, :]
             right = img[:, width:, :]
 
+            # Split and save out both left and right images
             filename_left = os.path.join(output_dir + subdirectory_path[:-1], file[:-17] + corrected_timestamp + '_left.jpg')
             filename_right = os.path.join(output_dir + subdirectory_path[:-1], file[:-17] + corrected_timestamp + '_right.jpg')
 

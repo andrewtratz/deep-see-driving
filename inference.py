@@ -14,6 +14,13 @@ import matplotlib.pyplot as plt
 
 from dataset import KITTIDataset
 
+
+##########################
+# inference.py
+#
+# Perform inference using a trained model and display a visual output of a single image
+#########################
+
 if torch.cuda.is_available():
     device = torch.device("cuda")
     print("Running on GPU")
@@ -21,6 +28,7 @@ else:
     device = torch.device("cpu")
     print("Running on CPU")
 
+# Flag to indicate the source of the file to perform inference on
 inference_type = 'DeepSee'
 #inference_type = 'KITTI'
 

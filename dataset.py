@@ -6,10 +6,10 @@ from torch.utils.data import Dataset
 from torchvision import transforms
 import random
 
+# PyTorch Datasets for the Deep See project data
+# Two Dataset classes are provided: one for KITTI, and the other for the custom DeepSee data set
 
-
-# pyTorch Dataset for the Deep See project data
-# Will recursively search img_dir and depth_dir to build up the dataset and apply specified transformations
+# Class for our custom data
 class DeepSeeDataset(Dataset):
 
     # Initialization with directories and transforms specified
