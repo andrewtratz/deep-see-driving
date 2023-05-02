@@ -1,8 +1,9 @@
-venv
+*venv*
 .idea
 *runs*
 *.pth
 *models*
 *model*
 *optimizer*
+.idea
 __pycache__

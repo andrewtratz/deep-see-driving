@@ -6,8 +6,8 @@ from calibration_settings import *
 
 # LiDAR data preprocessing script
 
-data_dir = r'D:\DeepSeeData\Raw'
-output_dir = r'D:\DeepSeeData\Processed'
+data_dir = r'../DeepSeeData/Raw'
+output_dir = r'../DeepSeeData/Processed'
 
 # Create Velodyne decoder config object
 config = vd.Config(model=model_type, rpm=rpm, calibration_file=calibration_file)

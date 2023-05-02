@@ -5,6 +5,7 @@ import numpy as np
 from torch.utils.data import Dataset
 from torchvision import transforms
 import random
+from tqdm import tqdm
 
 # PyTorch Datasets for the Deep See project data
 # Two Dataset classes are provided: one for KITTI, and the other for the custom DeepSee data set
@@ -60,7 +61,8 @@ class DeepSeeDataset(Dataset):
 
         # Sync the timesteps
         last_found = 0
-        for ts_i in ts_images:
+        print('Syncing timestamps...')
+        for ts_i in tqdm(ts_images):
             best_delta = 201 # Only accept matches within 200 milliseconds of each other
             best_match = None
             for i, ts_d in zip(range(len(ts_depths[last_found:])), ts_depths[last_found:]):
@@ -110,14 +112,14 @@ class DeepSeeDataset(Dataset):
         # If we're flipping, pretend we're also swapping eyes
         if self.flip != 'none':
             temp = left_image
-            left_image = right_image.copy()
+            left_image = right_image
             right_image = temp
 
         # Create a Boolean mask of locations where depth information is provided
         valid_mask = depth_image > 0
 
         # Normalize the depth image
-        depth_image = torch.div(torch.subtract(depth_image, 0.0), 1.0).to(torch.float32) # Subtract mean and divide by std
+        depth_image = torch.div(torch.subtract(depth_image, 1.05), 0.318).to(torch.float32) # Subtract mean and divide by std
 
         # Stack the data into a single tensor so we apply the same random augmentations to everything
         full_data = torch.vstack((left_image, right_image, depth_image.unsqueeze(0),

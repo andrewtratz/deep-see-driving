@@ -46,16 +46,20 @@ if inference_type == 'KITTI':
     model_path = r'./models/model19.pth'
 
 if inference_type == 'DeepSee':
-    left_image_path = r'D:\DeepSeeData\Processed\4-19 Run 1\photo\photo_1280x480_1681935334179_left.jpg'
+    # left_image_path = r'D:\DeepSeeData\Processed\4-19 Run 1\photo\photo_1280x480_1681935334179_left.jpg'
+    # right_image_path = left_image_path.replace('_left', '_right')
+    # depth_path = r'D:\DeepSeeData\Processed\4-19 Run 1\LIDAR\depth_1681935334187.npz'
+
+    left_image_path = r'../DeepSeeData/CV/camera/run3/photo_1280x480_1682531939271_left.jpg'
     right_image_path = left_image_path.replace('_left', '_right')
-    depth_path = r'D:\DeepSeeData\Processed\4-19 Run 1\LIDAR\depth_1681935334187.npz'
+    depth_path = r'../DeepSeeData/CV/lidar/run3/depth_1682531939314.npz'
 
     left_image = Image.open(left_image_path)
     right_image = Image.open(right_image_path)
     with np.load(depth_path) as npz_file:
         depth_image = npz_file['arr_0']
 
-    model_path = r'./model9.pth'
+    model_path = r'./model0.pth'
 
 valid_mask = np.asarray(depth_image) > 0
 
@@ -118,17 +122,17 @@ if inference_type == 'KITTI':
     output_data += 4582
     output_data = output_data.astype(np.int32)
 if inference_type == 'DeepSee':
-    output_data *= 1
-    output_data += 0
+    output_data *= 0.318
+    output_data += 1.05
     output_data[output_data < 0] = 0 # Threshold negative values are black
-    output_data = (output_data * 255 / np.max(output_data)).astype(np.uint8)
+    output_data = ((output_data - np.min(output_data)) * 255 / (np.max(output_data) - np.min(output_data))).astype(np.uint8)
 
 # Display data
 # colormap = plt.get_cmap('viridis')
 # heatmap = (colormap(output_data) * 2**16).astype(np.uint16)[:,:,:3]
 # heatmap = cv2.cvtColor(heatmap, cv2.COLOR_RGB2BGR)
 
-cv2.imshow("Inference Test", cv2.applyColorMap(output_data, cv2.COLORMAP_WINTER))
+cv2.imshow("Inference Test", cv2.applyColorMap(output_data, cv2.COLORMAP_RAINBOW))
 cv2.waitKey(0)
 
 print('Done')
