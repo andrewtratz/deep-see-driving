@@ -7,6 +7,8 @@ from calibration_settings import *
 
 #############
 #
+# calibrate.py
+#
 # Helper script to perform manual calibration of the sensors given camera and LiDAR data inputs
 #
 #############
@@ -30,9 +32,6 @@ cam = cam[crop_bottom:, :, :]
 cam_right = cam_right[crop_bottom:, :, :]
 
 h, w, c = cam.shape
-
-# cv2.imshow("Cam", cam)
-# cv2.waitKey(0)
 
 # Data input
 pcap_file = r'.\calibration_inputs\velo.pcap'
@@ -95,7 +94,6 @@ vec = np.matmul(y_axis_rotation_matrix, vec)
 # Translation
 vec = np.matmul(translation_matrix, vec)
 
-
 # Project into camera space
 projected = np.matmul(C, vec)
 
@@ -110,7 +108,6 @@ projected[:,0] = np.round((projected[:,0] * (h / 2)) + (h/2), 0)
 projected[:,1] = np.round((projected[:,1] * (w / 2)) + (w/2), 0)
 
 # Create a test image
-# img = np.zeros((h, w, 3), dtype=np.uint8)
 img = cam.copy()
 
 # Populate the image with color-coded pixel values
@@ -137,13 +134,9 @@ def color_code(img, projected):
 img = color_code(img, projected)
 right = color_code(cam_right, projected)
 
-# output = np.concatenate((img, right), axis=1)
-
 # Display the test image
 cv2.imshow("Calibration Test", img)
 cv2.imwrite('output.jpg', img)
 cv2.waitKey(0)
-
-
 
 print(f'File: {str(pcap_file)} | Number of point cloud frames: {len(cloud_arrays)}')

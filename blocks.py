@@ -5,6 +5,14 @@ from torchvision import datasets
 from torchvision import transforms
 from torch.utils.data.sampler import SubsetRandomSampler
 
+##################
+# blocks.py
+#
+# Definition of residual blocks used to construct the network
+# Modified from an existing
+#
+##################
+
 
 # Code based on implementation from https://blog.paperspace.com/writing-resnet-from-scratch-in-pytorch/
 class ResidualBlock(nn.Module):

@@ -7,8 +7,15 @@ from torchvision import transforms
 import random
 from tqdm import tqdm
 
+
+##########
+#
+# dataset.py
+#
 # PyTorch Datasets for the Deep See project data
 # Two Dataset classes are provided: one for KITTI, and the other for the custom DeepSee data set
+#
+##########
 
 # Class for our custom data
 class DeepSeeDataset(Dataset):
@@ -28,6 +35,7 @@ class DeepSeeDataset(Dataset):
 
         self.valid_paths = []
 
+        # Traverse files and build up list of file paths
         walk = os.walk(self.img_root_dir)
         for entry in walk:
             dir, subdir, files = entry
@@ -59,7 +67,7 @@ class DeepSeeDataset(Dataset):
         ts_images = ts_images[np.logical_and(ts_images > ts_depth_min, ts_images < ts_depth_max)]
         ts_depths = ts_depths[np.logical_and(ts_depths > ts_image_min, ts_depths < ts_image_max)]
 
-        # Sync the timesteps
+        # Sync the timestamps to find depth and camera images which are within 200ms of each other
         last_found = 0
         print('Syncing timestamps...')
         for ts_i in tqdm(ts_images):
@@ -102,9 +110,8 @@ class DeepSeeDataset(Dataset):
             depth_image = npz_file['arr_0']
 
         # Apply transform augmentations to the data
-
         # Convert images into pyTorch tensor data format, which will be used for analysis
-        tensor_conv = transforms.ToTensor()
+        tensor_conv = transforms.ToTensor() # Also normalizes at the same time
         left_image = tensor_conv(left_image).to(torch.float32)
         right_image = tensor_conv(right_image).to(torch.float32)
         depth_image = tensor_conv(depth_image).squeeze(0)
@@ -177,8 +184,7 @@ class KITTIDataset(Dataset):
                                 continue
                             self.file_paths.append(dir + '\\' + file)
 
-        # Populate the list of depth paths (ground truth labels)
-
+            # Populate the list of depth paths (ground truth labels)
             walk = os.walk(os.path.join(self.depth_root_dir, img_dir))
             for entry in walk:
                 dir, subdir, files = entry
@@ -187,14 +193,12 @@ class KITTIDataset(Dataset):
                         if file[-4:] == '.png':
                             self.depth_paths.append(dir + '\\' + file)
                             # Get rid of file paths which don't exist in the depth ground truth
-                            # assert(self.depth_paths[-1].split('\\')[-1] == self.file_paths[len(self.depth_paths)-1].split('\\')[-1])
                             while self.depth_paths[-1].split('\\')[-1] != self.file_paths[len(self.depth_paths)-1].split('\\')[-1]:
                                 print('Discarding ' + self.file_paths[len(self.depth_paths)-1])
                                 self.file_paths.remove(self.file_paths[len(self.depth_paths)-1])
 
             # Truncate file paths, since some of the final depths may not exist
             self.file_paths = self.file_paths[0:len(self.depth_paths)]
-
 
     # Return the total length of the Dataset
     def __len__(self):
@@ -221,7 +225,6 @@ class KITTIDataset(Dataset):
         # dst.show()
 
         # Apply transform augmentations to the data
-
         # Convert images into pyTorch tensor data format, which will be used for analysis
         tensor_conv = transforms.ToTensor()
         left_image = tensor_conv(left_image)

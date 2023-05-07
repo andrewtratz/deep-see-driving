@@ -1,7 +1,12 @@
 import math
 
 ##########
-# Multi-sensor calibration settings
+#
+# calibration_settings.py
+#
+# Multi-sensor calibration configuration settings
+# These are defined through trial-and-error process using manual_calibration.py
+#
 ##########
 
 # Focal length

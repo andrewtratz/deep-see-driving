@@ -18,9 +18,13 @@ from dataset import KITTIDataset
 ##########################
 # inference.py
 #
-# Perform inference using a trained model and display a visual output of a single image
+# Perform inference using a trained model
+# Does batch inference across images in a defined directory
+# Output images can then be stitched together into video using makevideo.py
+#
 #########################
 
+# Do we have a GPU available?
 if torch.cuda.is_available():
     device = torch.device("cuda")
     print("Running on GPU")
@@ -29,43 +33,15 @@ else:
     print("Running on CPU")
 
 # Flag to indicate the source of the file to perform inference on
-#inference_type = 'DeepSee'
-inference_type = 'KITTI'
+inference_type = TYPE
 
 if inference_type == 'KITTI':
-    # Load the source image and crop
-    left_image_path = r'D:\KITTI\2011_09_26_drive_0113_sync_2\2011_09_26\2011_09_26_drive_0113_sync\image_02\data\0000000018.png'
-    right_image_path = left_image_path.replace('image_02', 'image_03')
-    depth_path = r'C:\Users\andre\Dropbox\~DGMD E-17\Project\Datasets\KITTI\data_depth_annotated\val\2011_09_26_drive_0113_sync\proj_depth\groundtruth\image_02\0000000018.png'
-
     crop_pattern = (0, 120, 1242, 375)
-    left_image = Image.open(left_image_path).crop(crop_pattern)
-    right_image = Image.open(right_image_path).crop(crop_pattern)
-    depth_image = Image.open(depth_path).crop(crop_pattern)
 
-    model_path = r'./models/run2/model113.pth'
-
-if inference_type == 'DeepSee':
-    # left_image_path = r'D:\DeepSeeData\Processed\4-19 Run 1\photo\photo_1280x480_1681935334179_left.jpg'
-    # right_image_path = left_image_path.replace('_left', '_right')
-    # depth_path = r'D:\DeepSeeData\Processed\4-19 Run 1\LIDAR\depth_1681935334187.npz'
-
-    model_path = r'./model5.pth'
-
-    # left_image_path = r'../DeepSeeData/CV/camera/run3/photo_1280x480_1682531939271_left.jpg'
-    # right_image_path = left_image_path.replace('_left', '_right')
-    # depth_path = r'../DeepSeeData/CV/lidar/run3/depth_1682531939314.npz'
-    #
-    # left_image = Image.open(left_image_path)
-    # right_image = Image.open(right_image_path)
-    # with np.load(depth_path) as npz_file:
-    #     depth_image = npz_file['arr_0']
-    #
-    # model_path = r'./model0.pth'
-
-#valid_mask = np.asarray(depth_image) > 0
+model_path = MODEL_PATH
 
 # Create overlapping patchwork of different crops of the image
+# These will be averaged together to create the final output
 def create_patchwork(left_image, right_image):
     w, h = left_image.size
     crop_ul = [] # List of upper-left points of each patch
@@ -103,8 +79,9 @@ model = ResNetLike().to(device)
 model.load_state_dict(torch.load(model_path))
 model.eval()
 
-walk = os.walk(r'D:\KITTI\2011_09_26_drive_0005_sync_2\2011_09_26\2011_09_26_drive_0005_sync\image_02\data')
-#walk = os.walk(r'D:\run3\camera\run3')
+walk = os.walk(INFERENCE_INPUT)
+
+# Traverse the input directory
 p = None # Percentile data
 for entry in walk:
     dir, subdir, files = entry
@@ -112,19 +89,26 @@ for entry in walk:
         skipped_frames = 0
         if '.png' in file or '_left' in file:
             left_image_path = os.path.join(dir, file)
+
+            # Open the right and left images
             if inference_type == 'KITTI':
                 right_image_path = left_image_path.replace('image_02', 'image_03')
+                left_image = Image.open(left_image_path).crop(crop_pattern)
+                right_image = Image.open(right_image_path).crop(crop_pattern)
             else:
                 right_image_path = left_image_path.replace('left', 'right')
-            left_image = Image.open(left_image_path) #.crop(crop_pattern)
-            right_image = Image.open(right_image_path) #.crop(crop_pattern)
+                left_image = Image.open(left_image_path)
+                right_image = Image.open(right_image_path)
 
+            # Create a patchwork of overlapping patches of the images
             patches, crop_ul, overlaps = create_patchwork(left_image, right_image)
 
+            # Set up our output array
             w, h = left_image.size
             output_data = np.zeros((h, w), dtype=np.float32)
 
             # Do individual patch inference
+            # Could make faster by doing batch inference, if needed (not implemented)
             for patch_id, ul in tqdm(zip(range(patches.shape[0]), crop_ul)):
                 y, x = ul
                 with torch.no_grad():
@@ -136,14 +120,20 @@ for entry in walk:
 
             # Convert the output from normalized form into actual output
             if inference_type == 'KITTI':
+                # De-normalize
                 output_data *= 3186
                 output_data += 4582
 
+                # For visualization, posterize the depth map by percentile value
                 percs = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90]
                 percs.sort(reverse=True)
                 if p is None:  # Use first image to calibrate the percentiles - fixed going forward.
                     p = np.percentile(output_data.flatten(), percs)
+
+                # Array of flags to see which values have already been changed to percentiles
                 changed = np.zeros(output_data.shape, dtype=bool)
+
+                # Apply posterization
                 for val, perc in zip(list(p), percs):
                     mask = output_data > val
                     output_data[np.logical_and(output_data > val, ~changed)] = perc * (255 / 90)
@@ -151,19 +141,22 @@ for entry in walk:
                 output_data[~changed] = 0.0
                 output_data = output_data.astype(np.uint8)
 
-                # output_data = np.minimum(255, (output_data * 255 / 2500)).astype(np.uint8)
-                # output_data = ((output_data - np.min(output_data)) * 255 / (
-                #             np.max(output_data) - np.min(output_data))).astype(np.uint8)
             if inference_type == 'DeepSee':
+                # De-normalize
                 output_data *= 0.318
                 output_data += 1.05
                 output_data[output_data < 0] = 0 # Threshold negative values are black
 
+                # For visualization, posterize the depth map by percentile value
                 percs = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90]
                 percs.sort(reverse=True)
                 if p is None: # Use first image to calibrate the percentiles - fixed going forward.
                     p = np.percentile(output_data.flatten(), percs)
+
+                # Array of flags to see which values have already been changed to percentiles
                 changed = np.zeros(output_data.shape, dtype=bool)
+
+                # Apply posterization
                 for val, perc in zip(list(p), percs):
                     mask = output_data > val
                     output_data[np.logical_and(output_data > val, ~changed)] = perc * (255 / 90)
@@ -171,19 +164,9 @@ for entry in walk:
                 output_data[~changed] = 0.0
                 output_data = output_data.astype(np.uint8)
 
-                # output_data = ((output_data - np.min(output_data)) * 255 / (np.max(output_data) - np.min(output_data))).astype(np.uint8)
+            # Write the output image
+            cv2.imwrite(os.path.join(INFERENCE_OUT, file), cv2.applyColorMap(output_data, cv2.COLORMAP_RAINBOW))
 
-            # Display data
-            # colormap = plt.get_cmap('viridis')
-            # heatmap = (colormap(output_data) * 2**16).astype(np.uint16)[:,:,:3]
-            # heatmap = cv2.cvtColor(heatmap, cv2.COLOR_RGB2BGR)
-
-            cv2.imwrite(os.path.join(r'D:\out', file), cv2.applyColorMap(output_data, cv2.COLORMAP_RAINBOW))
-
-            # cv2.imshow("Inference Test", cv2.applyColorMap(output_data, cv2.COLORMAP_RAINBOW))
-            # cv2.waitKey(0)
-            #
-            # print('Done')
 
 
 

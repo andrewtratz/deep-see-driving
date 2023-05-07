@@ -34,14 +34,16 @@ sensor data as an input.
 * git clone https://github.com/andrewtratz/deep-see-driving
 * sudo apt-get install tcpdump
 * pip install --pre scapy[basic]
+* pip install picamera
+* pip install -r requirements.txt
 
 # Capturing data on the Robot
 
 To capture stereo camera data on the robot, run the capture.py
 script from the ./Robot subfolder.
 
-While camera data is being recorded, the LiDAR data should be dumped
-to .pcap files using the tcpdump command line utility.
+While camera data is being recorded, the user should run tcpdump command line utility
+simultaneously to write .pcap files to disk.
 
 # Calibrating the sensors
 
@@ -54,17 +56,22 @@ predefined calibration values.
 # Preprocessing
 
 Two scripts are provided for preprocessing the camera images and LiDAR data, respectively.
-To use, first update the data paths at the beginning of the scripts:
+To use, first update the data paths in config.py, then run:
 * process_raw_images.py
 * process_raw_pcap.py
 
 # Training
 
-To train a model, update the path of the preprocessed data files in **train.py**
-and run this program.
+To train a new model, check settings in **config.py** and run the **train.py** script.
 
 # Inference
 
-The python program **inference.py** can take a single image as input (update path
-in the file), run inference given a set of pretrained model weights (also indicated
-in the file), and produce a visual output of the results.
+The python program **inference.py** can take a directory as input (update path
+in config.py), run inference given a set of pretrained model weights, and output depth map visualizations to a
+specified directory.
+
+Pre-trained weights are provided in the "trained_weights" folder. 
+* kitti_weights.pth for model trained on KITTI dataset
+* deepsee_weights.pth for model trained on Deep See dataset
+
+The python program **makevideo.py** can be run on the output of the prior step to convert these into a video.

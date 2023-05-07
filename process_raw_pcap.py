@@ -3,18 +3,25 @@ from tqdm import tqdm
 import velodyne_decoder as vd
 import numpy as np
 from calibration_settings import *
+from config import PROC_DATA_DIR, PROC_OUTPUT_DIR
 
+#############
+#
+# process_raw_pcap.py
+#
 # LiDAR data preprocessing script
+#
+#############
 
-data_dir = r'../DeepSeeData/Raw'
-output_dir = r'../DeepSeeData/Processed'
+data_dir = PROC_DATA_DIR
+output_dir = PROC_OUTPUT_DIR
 
 # Create Velodyne decoder config object
 config = vd.Config(model=model_type, rpm=rpm, calibration_file=calibration_file)
 config.min_angle = 360 - fov/2
 config.max_angle = fov/2
 
-# Define transformations
+# Define transformations based on calibration_settings.py inputs
 translation_matrix = np.array([[1, 0, 0, x_translation],
                                                [0, 1, 0, y_translation],
                                                [0, 0, 1, z_translation],
@@ -61,6 +68,7 @@ for entry in tqdm(walk):
             except:
                 continue
 
+            # Iterate through each frame in the velodyne decoder output
             for stamp, points in vd.read_pcap(pcap_file, config):
 
                 # Skip frames with very little data
@@ -112,6 +120,7 @@ for entry in tqdm(walk):
                 projected = projected[projected[:, 0] < image_width] # Can't exceed image height
                 projected = projected[projected[:, 1] < image_height] # Can't exceed image width
 
+                # Make sure we have enough data points available to use as a valid train case
                 if projected.shape[0] < minimum_data:
                     skipped_frames += 1
                     continue
