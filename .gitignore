@@ -1,7 +1,6 @@
 *venv*
 .idea
 *run*
-*.pth
 *models*
 *model*
 *optimizer*
