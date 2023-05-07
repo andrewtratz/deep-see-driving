@@ -11,6 +11,11 @@ and Velodyne Puck Hi-Res LiDAR sensor. Using the captured data, it trains a comp
 model to predict depth maps, relying solely on the stereo camera
 sensor data as an input.
 
+The final project report, which explains the project in more detail, is 
+available [here](https://docs.google.com/document/d/1SI0otW8thLhnat8kOqcOyT9Yd1F_Rv1EcEzfGSpaOZ0/edit?usp=share_link).
+
+We also have a video overview of the project and results available [here](https://drive.google.com/file/d/1VeXNqEOcZzDiOvtsKE_OKAsWMVVRiA0m/view?usp=share_link).
+
 ## Robot setup on StereoPi v2 with Raspberry Pi Compute Module 4
 
 * Download OS image from https://www.mediafire.com/file/bf7wwnvb6vv9tgb/opencv-4.5.3.56.zip/file
