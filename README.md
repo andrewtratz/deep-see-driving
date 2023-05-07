@@ -57,8 +57,8 @@ predefined calibration values.
 
 Two scripts are provided for preprocessing the camera images and LiDAR data, respectively.
 To use, first update the data paths in config.py, then run:
-* process_raw_images.py
-* process_raw_pcap.py
+* **process_raw_images.py**
+* **process_raw_pcap.py**
 
 # Training
 
