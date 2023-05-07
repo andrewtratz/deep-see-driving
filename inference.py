@@ -29,8 +29,8 @@ else:
     print("Running on CPU")
 
 # Flag to indicate the source of the file to perform inference on
-inference_type = 'DeepSee'
-#inference_type = 'KITTI'
+#inference_type = 'DeepSee'
+inference_type = 'KITTI'
 
 if inference_type == 'KITTI':
     # Load the source image and crop
@@ -43,25 +43,27 @@ if inference_type == 'KITTI':
     right_image = Image.open(right_image_path).crop(crop_pattern)
     depth_image = Image.open(depth_path).crop(crop_pattern)
 
-    model_path = r'./models/model19.pth'
+    model_path = r'./models/run2/model113.pth'
 
 if inference_type == 'DeepSee':
     # left_image_path = r'D:\DeepSeeData\Processed\4-19 Run 1\photo\photo_1280x480_1681935334179_left.jpg'
     # right_image_path = left_image_path.replace('_left', '_right')
     # depth_path = r'D:\DeepSeeData\Processed\4-19 Run 1\LIDAR\depth_1681935334187.npz'
 
-    left_image_path = r'../DeepSeeData/CV/camera/run3/photo_1280x480_1682531939271_left.jpg'
-    right_image_path = left_image_path.replace('_left', '_right')
-    depth_path = r'../DeepSeeData/CV/lidar/run3/depth_1682531939314.npz'
+    model_path = r'./model5.pth'
 
-    left_image = Image.open(left_image_path)
-    right_image = Image.open(right_image_path)
-    with np.load(depth_path) as npz_file:
-        depth_image = npz_file['arr_0']
+    # left_image_path = r'../DeepSeeData/CV/camera/run3/photo_1280x480_1682531939271_left.jpg'
+    # right_image_path = left_image_path.replace('_left', '_right')
+    # depth_path = r'../DeepSeeData/CV/lidar/run3/depth_1682531939314.npz'
+    #
+    # left_image = Image.open(left_image_path)
+    # right_image = Image.open(right_image_path)
+    # with np.load(depth_path) as npz_file:
+    #     depth_image = npz_file['arr_0']
+    #
+    # model_path = r'./model0.pth'
 
-    model_path = r'./model0.pth'
-
-valid_mask = np.asarray(depth_image) > 0
+#valid_mask = np.asarray(depth_image) > 0
 
 # Create overlapping patchwork of different crops of the image
 def create_patchwork(left_image, right_image):
@@ -101,41 +103,87 @@ model = ResNetLike().to(device)
 model.load_state_dict(torch.load(model_path))
 model.eval()
 
-patches, crop_ul, overlaps = create_patchwork(left_image, right_image)
+walk = os.walk(r'D:\KITTI\2011_09_26_drive_0005_sync_2\2011_09_26\2011_09_26_drive_0005_sync\image_02\data')
+#walk = os.walk(r'D:\run3\camera\run3')
+p = None # Percentile data
+for entry in walk:
+    dir, subdir, files = entry
+    for file in files:
+        skipped_frames = 0
+        if '.png' in file or '_left' in file:
+            left_image_path = os.path.join(dir, file)
+            if inference_type == 'KITTI':
+                right_image_path = left_image_path.replace('image_02', 'image_03')
+            else:
+                right_image_path = left_image_path.replace('left', 'right')
+            left_image = Image.open(left_image_path) #.crop(crop_pattern)
+            right_image = Image.open(right_image_path) #.crop(crop_pattern)
 
-w, h = left_image.size
-output_data = np.zeros((h, w), dtype=np.float32)
+            patches, crop_ul, overlaps = create_patchwork(left_image, right_image)
 
-# Do individual patch inference
-for patch_id, ul in tqdm(zip(range(patches.shape[0]), crop_ul)):
-    y, x = ul
-    with torch.no_grad():
-        out = model(patches[patch_id].unsqueeze(0).to(device))
-    output_data[y:y+CROP_SIZE, x:x+CROP_SIZE] += out.squeeze(0).cpu().numpy()
+            w, h = left_image.size
+            output_data = np.zeros((h, w), dtype=np.float32)
 
-# Divide by the number of overlapping patches per pixel to get average output
-output_data = np.divide(output_data, overlaps)
+            # Do individual patch inference
+            for patch_id, ul in tqdm(zip(range(patches.shape[0]), crop_ul)):
+                y, x = ul
+                with torch.no_grad():
+                    out = model(patches[patch_id].unsqueeze(0).to(device))
+                output_data[y:y+CROP_SIZE, x:x+CROP_SIZE] += out.squeeze(0).cpu().numpy()
 
-# Convert the output from normalized form into actual output
-if inference_type == 'KITTI':
-    output_data *= 3186
-    output_data += 4582
-    output_data = output_data.astype(np.int32)
-if inference_type == 'DeepSee':
-    output_data *= 0.318
-    output_data += 1.05
-    output_data[output_data < 0] = 0 # Threshold negative values are black
-    output_data = ((output_data - np.min(output_data)) * 255 / (np.max(output_data) - np.min(output_data))).astype(np.uint8)
+            # Divide by the number of overlapping patches per pixel to get average output
+            output_data = np.divide(output_data, overlaps)
 
-# Display data
-# colormap = plt.get_cmap('viridis')
-# heatmap = (colormap(output_data) * 2**16).astype(np.uint16)[:,:,:3]
-# heatmap = cv2.cvtColor(heatmap, cv2.COLOR_RGB2BGR)
+            # Convert the output from normalized form into actual output
+            if inference_type == 'KITTI':
+                output_data *= 3186
+                output_data += 4582
 
-cv2.imshow("Inference Test", cv2.applyColorMap(output_data, cv2.COLORMAP_RAINBOW))
-cv2.waitKey(0)
+                percs = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90]
+                percs.sort(reverse=True)
+                if p is None:  # Use first image to calibrate the percentiles - fixed going forward.
+                    p = np.percentile(output_data.flatten(), percs)
+                changed = np.zeros(output_data.shape, dtype=bool)
+                for val, perc in zip(list(p), percs):
+                    mask = output_data > val
+                    output_data[np.logical_and(output_data > val, ~changed)] = perc * (255 / 90)
+                    changed[mask] = True
+                output_data[~changed] = 0.0
+                output_data = output_data.astype(np.uint8)
 
-print('Done')
+                # output_data = np.minimum(255, (output_data * 255 / 2500)).astype(np.uint8)
+                # output_data = ((output_data - np.min(output_data)) * 255 / (
+                #             np.max(output_data) - np.min(output_data))).astype(np.uint8)
+            if inference_type == 'DeepSee':
+                output_data *= 0.318
+                output_data += 1.05
+                output_data[output_data < 0] = 0 # Threshold negative values are black
+
+                percs = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90]
+                percs.sort(reverse=True)
+                if p is None: # Use first image to calibrate the percentiles - fixed going forward.
+                    p = np.percentile(output_data.flatten(), percs)
+                changed = np.zeros(output_data.shape, dtype=bool)
+                for val, perc in zip(list(p), percs):
+                    mask = output_data > val
+                    output_data[np.logical_and(output_data > val, ~changed)] = perc * (255 / 90)
+                    changed[mask] = True
+                output_data[~changed] = 0.0
+                output_data = output_data.astype(np.uint8)
+
+                # output_data = ((output_data - np.min(output_data)) * 255 / (np.max(output_data) - np.min(output_data))).astype(np.uint8)
+
+            # Display data
+            # colormap = plt.get_cmap('viridis')
+            # heatmap = (colormap(output_data) * 2**16).astype(np.uint16)[:,:,:3]
+            # heatmap = cv2.cvtColor(heatmap, cv2.COLOR_RGB2BGR)
+
+            cv2.imwrite(os.path.join(r'D:\out', file), cv2.applyColorMap(output_data, cv2.COLORMAP_RAINBOW))
+
+            # cv2.imshow("Inference Test", cv2.applyColorMap(output_data, cv2.COLORMAP_RAINBOW))
+            # cv2.waitKey(0)
+            #
+            # print('Done')
 
 
 
